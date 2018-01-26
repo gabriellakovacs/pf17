@@ -8,7 +8,9 @@ SETUP CANVAS
 ************/
 
 const canvas = document.querySelector('canvas');
-const c = canvas.getContext('2d');
+const c = canvas.getContext('2d', {
+  alpha: false
+});
 
 let w;
 let h;
@@ -35,73 +37,80 @@ function Point (x, y){
 function Shape() {}
 
 
-Shape.prototype.moveLinear = function(direction, velocity) {
-    this.center.x += direction.x * velocity;
-    this.center.y += direction.y * velocity;
+Shape.prototype.moveLinear = function() {
+    this.center.x += this.step.x;
+    this.center.y += this.step.y;
 }
-
-
-Shape.prototype.moveCircular = function(movementAngle, pathRadius, pathCenter, pathStartAngle) {
-    // this.movementAngle = movementAngle;
-    // this.pathRadius = pathRadius;
-    // this.pathCenter = pathCenter;
-    // this.pathStartAngle = pathStartAngle;
-
-    this.center.x = Math.cos(movementAngle * pathStartAngle) * pathRadius + pathCenter.x;
-    this.center.y = Math.sin(movementAngle * pathStartAngle) * pathRadius + pathCenter.y;
-
-    pathStartAngle++;
-    if(pathStartAngle * movementAngle > 360) {
-        pathStartAngle -= 360;
-    }
-}
-
 
 Circle.prototype = new Shape();
 Circle.prototype.constructor = Circle;
 
 
-function Circle(center, radius, color1, color2, lineWidth, isFill) {
+function Circle(center, radius, color1, color2) {
     this.center = center;
     this.radius = radius;
     this.color1 = color1;
     this.color2 = color2;
-    this.lineWidth = lineWidth;
-    this.isFill = isFill;
+
+    this.setCircleVelocity();
 }
 
 
+Circle.prototype.setCircleVelocity = function() {
+
+     //get the distance from the circle center towards the top center(0, -h/2) of the screen
+     var distanceX = this.center.x * -1;
+     distanceX === 0 ? distanceX = 0.01 : false;
+     var distanceY = -1 * (h / 2) - this.center.y;
+
+     var distanceection = new Point(distanceX, distanceY);
+
+     if(Math.abs(distanceX) > Math.abs(distanceY)) {
+
+         //set the speed for the x axis
+         var velocityX = Math.random() * 1.8 + 0.8;
+
+         //get the speed for the y axis
+         var velocityY = distanceY / (Math.abs(distanceX) / velocityX) ;
+
+         velocityX *= Math.sign(distanceX);
+
+     } else {
+
+         //set the speed for the y axis
+         var velocityY = Math.random() * 1.8 + 0.8;
+
+         //get the speed for the x axis
+         var velocityX = distanceX / (Math.abs(distanceY) / velocityY) ;
+
+         velocityY *= Math.sign(distanceY);
+
+     }
+
+     this.step = new Point(Math.round(velocityX), Math.round(velocityY));
+ }
+
+
 Circle.prototype.draw = function() {
-    // c.globalCompositeOperation = 'color-dodge';
-    // c.globalCompositeOperation = 'luminosity';
-    c.globalCompositeOperation = 'difference';
-    c.lineWidth = this.lineWidth;
 
 
-    //COLOR1
-    c.strokeStyle = this.color1;
-    c.fillStyle = this.color1;
     c.beginPath();
     c.arc(this.center.x + mousePosToCenterVector.x * 10, this.center.y + mousePosToCenterVector.y * 10, this.radius, 0, 7, false);
 
-    if(this.isFill) { c.fill(); }
-    else { c.stroke(); }
+    //c.closePath();
 
-    c.closePath();
+    c.stroke();
 
 
-    //COLOR2
-    c.strokeStyle = this.color2;
-    c.fillStyle = this.color2;
-    c.beginPath();
-    c.arc(this.center.x - mousePosToCenterVector.x * 10, this.center.y - mousePosToCenterVector.y * 10, this.radius, 0, 7, false);
 
-    if(this.isFill) { c.fill(); }
-    else { c.stroke(); }
+    // c.beginPath();
+    // c.arc(this.center.x - mousePosToCenterVector.x * 10, this.center.y - mousePosToCenterVector.y * 10, this.radius, 0, 7, false);
+    //
+    // c.closePath();
+    //
+    // c.stroke();
 
-    c.closePath();
 
-    c.globalCompositeOperation = 'none';
 }
 
 
@@ -110,22 +119,11 @@ Circle.prototype.handleOutOfSight = function() {
     var ypos = Math.abs(this.center.y) - this.radius;
 
     if(xpos > maxDist || ypos > maxDist) {
-        this.center.x = Math.random() * w - w /2;
-        this.center.y = Math.random() * h / 2 + this.radius;
+        this.center.x = Math.round(Math.random() * w - w / 2);
+        this.center.y = Math.round(Math.random() * h / 2 + this.radius);
+
+        this.setCircleVelocity();
     }
-}
-
-function drawInsideShape () {
-    var argLength = arguments.length;
-    c.save();
-    c.clip();
-
-    for(var i = 0; i < argLength; i += 2) {
-        arguments[i](arguments[i+1]);
-    }
-
-    //this.draw();
-    c.restore();
 }
 
 
@@ -153,8 +151,8 @@ function Triangle (center, radius, firstVertexPositionOnCircle) {
 
 
 Triangle.prototype.draw = function(){
-    c.strokeStyle = 'rgb(255, 255, 255)';
-    //c.fillStyle = 'rgb(255, 255, 255)';
+    //c.strokeStyle = 'rgb(255, 255, 255)';
+
     c.beginPath();
     c.moveTo(this.vertexList[0].x, this.vertexList[0].y);
     for (var i = 1; i < 3; i++){
@@ -162,10 +160,46 @@ Triangle.prototype.draw = function(){
     }
     c.closePath();
     //c.lineWidth = 30;
-    // c.stroke();
-    //c.fill();
-    //c.lineWidth = 2;
+    //c.stroke();
 }
+
+
+function initCircle() {
+    var centerX = Math.round(Math.random() * w / 2);
+    var centerY = Math.round(Math.random() * h / 2 - 222);
+
+
+    var circle = new Circle(
+        new Point(centerX, centerY),
+        circleRadius,
+        color1,
+        color2
+    )
+
+    return circle;
+}
+
+function drawCircle(contex, color) {
+    contex.lineWidth = 33;
+    contex.strokeStyle = color;
+
+    contex.beginPath();
+    contex.arc(222 + 33, 222 + 33, 222, 0, 7, false);
+    contex.stroke();
+}
+
+var m_canvas = document.createElement('canvas');
+m_canvas.width = 510;
+m_canvas.height = 510;
+var m_context = m_canvas.getContext('2d');
+drawCircle(m_context, 'rgb(255, 0, 0)');
+
+var b_canvas = document.createElement('canvas');
+b_canvas.width = 510;
+b_canvas.height = 510;
+var b_context = b_canvas.getContext('2d');
+drawCircle(b_context, 'rgb(0, 255, 255)');
+
 
 
 /****************
@@ -175,6 +209,7 @@ CHANGE PARAMETERS
 var backgroundColor = '#1d211e';
 
 
+//TRIANGLE
 var triangleR = Math.max(w / 2, h / 2);
 var triangleStartAngle = 90;
 var triangleCenter = new Point(
@@ -185,48 +220,33 @@ var triangleCenter = new Point(
 
 var triangle = new Triangle(triangleCenter, triangleR, triangleStartAngle);
 
-color1 = 'rgba(255, 0, 0, 1)';
+
+//CIRCLES
+var nrOfCircles = 10;
+var circleRadius = Math.max(h / 4, w / 4);
+var strokeW = 33;
+
+var color1 = 'rgba(255, 0, 0, 1)';
 // color1 = 'red';
 // color1 = '#00c0cb';
-
-
-//COLOR2
-color2 = 'rgba(0, 255, 255, 1)';
+var color2 = 'rgba(0, 255, 255, 1)';
 // color2 = 'blue';
 // color2 = '#ffc0cb';
 
 var circleList = [];
-for(var i = 0; i < 16; i++) {
-    circleList.push(
-        new Circle(
-            new Point(Math.random() * 100 - 50, Math.random() * h / 2),
-            222,
-            color1,
-            color2,
-            33,//lineWidth,
-            false
-        )
-    );
+for(var i = 0; i < nrOfCircles; i++) {
+    circleList.push( initCircle() );
 }
-
-var circleV = [];
-for(var i = 0; i < 16; i++) {
-    circleV.push(Math.random() * 5);
-}
-
-var circleY = [];
-for(var i = 0; i < 16; i++) {
-    circleY.push(Math.random() * 2);
-}
-
 
 //helpers
 var origoPoint = new Circle(origo, 10, 'rgb(255, 255, 0)');
 
-
+c.lineWidth = strokeW;
 clearCanvas(backgroundColor);
 
 draw();
+
+//c.drawImage(m_canvas, -255, -255);
 
 /************
 ACTION
@@ -238,18 +258,15 @@ function clearCanvas(backgroundColor){
 }
 
 
-
 function draw() {
     requestAnimationFrame(draw);
     clearCanvas(backgroundColor);
 
     mousePosToCenterVector = getMousePosToCenterVector(mousePos);
 
-    //origoPoint.draw();
-
-    for(var i = 0; i < 16; i++) {
+    for(var i = 0; i < nrOfCircles; i++) {
         circleList[i].handleOutOfSight();
-        circleList[i].moveLinear(new Point(circleY[i], -1), circleV[i]);
+        circleList[i].moveLinear();
     }
 
 
@@ -257,19 +274,15 @@ function draw() {
     //TOP CENTER
     //-----------------------
 
-    triangle.draw();
-
-    c.save();
-    c.clip();
-
-
-
-    for(var i = 0; i < 16; i++) {
-        circleList[i].draw();
-    }
-
-
-    c.restore();
+    // triangle.draw();
+    //
+    // c.save();
+    // c.clip();
+    //
+    // drawAllCircles();
+    //
+    //
+    // c.restore();
 
 
     //----------------------
@@ -284,16 +297,12 @@ function draw() {
     c.save();
     c.clip();
 
-
-
-    for(var i = 0; i < 16; i++) {
-        circleList[i].draw();
-    }
+    drawAllCircles();
 
     c.restore();
 
     c.scale(-1, 1);
-    c.rotate(-60 * pi / 180);
+    //c.rotate(-60 * pi / 180);
 
     //----------------------
     //TOP LEFT
@@ -307,14 +316,9 @@ function draw() {
     // c.save();
     // c.clip();
     //
-    //
-    //
-    //
-    // for(var i = 0; i < 16; i++) {
-    //     circleList[i].draw();
-    // }
-    //
-    //
+
+    // drawAllCircles();
+
     // c.restore();
     //
     // c.scale(-1, 1);
@@ -331,11 +335,8 @@ function draw() {
     // c.save();
     // c.clip();
     //
-    //
-    //
-    // for(var i = 0; i < 16; i++) {
-    //     circleList[i].draw();
-    // }
+    // drawAllCircles();
+
     //
     // c.restore();
     //
@@ -345,18 +346,14 @@ function draw() {
     //BOTTOM RIGHT
     //-----------------------
 
-    c.rotate(120 * pi / 180);
+    c.rotate(60 * pi / 180);
 
     triangle.draw();
 
     c.save();
     c.clip();
 
-
-
-    for(var i = 0; i < 16; i++) {
-        circleList[i].draw();
-    }
+    drawAllCircles();
 
     c.restore();
 
@@ -375,18 +372,39 @@ function draw() {
     // c.save();
     // c.clip();
     //
-    //
-    //
-    // for(var i = 0; i < 16; i++) {
-    //     circleList[i].draw();
-    // }
-    //
+    // drawAllCircles();
+
     // c.restore();
     //
     //
     // c.rotate(120 * pi / 180);
 
  }
+
+
+function drawAllCircles() {
+
+    c.globalCompositeOperation = 'difference';
+
+    //COLOR1
+    //c.strokeStyle = this.color1;
+    for(var i = 0; i < nrOfCircles; i++) {
+        //circleList[i].draw();
+        c.drawImage(m_canvas, circleList[i].center.x, circleList[i].center.y);
+    }
+
+    //COLOR2
+    // c.strokeStyle = this.color2;
+    // for(var i = 0; i < nrOfCircles; i++) {
+    //     //circleList[i].draw();
+    // }
+    for(var i = 0; i < nrOfCircles; i++) {
+        //circleList[i].draw();
+        c.drawImage(b_canvas, circleList[i].center.x + 5, circleList[i].center.y + 5);
+    }
+
+    c.globalCompositeOperation = 'normal';
+}
 
 
 function getMousePosToCenterVector(mousePos) {
