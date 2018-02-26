@@ -2,6 +2,25 @@ window.onload = function() {
     document.querySelector('main').classList.remove('invisible');
 }
 
+/****************
+CHANGE PARAMETERS
+*****************/
+
+var backgroundColor = '#1d211e';
+
+//CIRCLES
+var nrOfCircles = 12;
+var circleRadius = Math.max(window.innerHeight / 4, window.innerWidth / 4);
+var strokeW = 33;
+var circleHalfWidth = circleRadius + strokeW * 2;
+
+var color1 = 'rgba(255, 0, 0, 1)';
+// color1 = 'red';
+// color1 = '#00c0cb';
+var color2 = 'rgba(0, 255, 255, 1)';
+// color2 = 'blue';
+// color2 = '#ffc0cb';
+
 
 /************
 SETUP CANVAS
@@ -34,7 +53,11 @@ function Point (x, y){
 }
 
 
-function Shape() {}
+function Shape(center, radius) {
+    this.center = center;
+    this.radius = radius;
+    this.setVelocity();
+}
 
 
 Shape.prototype.moveLinear = function() {
@@ -42,21 +65,8 @@ Shape.prototype.moveLinear = function() {
     this.center.y += this.step.y;
 }
 
-Circle.prototype = new Shape();
-Circle.prototype.constructor = Circle;
 
-
-function Circle(center, radius, color1, color2) {
-    this.center = center;
-    this.radius = radius;
-    this.color1 = color1;
-    this.color2 = color2;
-
-    this.setCircleVelocity();
-}
-
-
-Circle.prototype.setCircleVelocity = function() {
+Shape.prototype.setVelocity = function() {
 
      //get the distance from the circle center towards the top center(0, -h/2) of the screen
      var distanceX = this.center.x * -1;
@@ -91,38 +101,15 @@ Circle.prototype.setCircleVelocity = function() {
  }
 
 
-Circle.prototype.draw = function() {
-
-
-    c.beginPath();
-    c.arc(this.center.x + mousePosToCenterVector.x * 10, this.center.y + mousePosToCenterVector.y * 10, this.radius, 0, 7, false);
-
-    //c.closePath();
-
-    c.stroke();
-
-
-
-    // c.beginPath();
-    // c.arc(this.center.x - mousePosToCenterVector.x * 10, this.center.y - mousePosToCenterVector.y * 10, this.radius, 0, 7, false);
-    //
-    // c.closePath();
-    //
-    // c.stroke();
-
-
-}
-
-
-Circle.prototype.handleOutOfSight = function() {
-    var xpos = Math.abs(this.center.x) - this.radius;
-    var ypos = Math.abs(this.center.y) - this.radius;
+Shape.prototype.handleOutOfSight = function() {
+    var xpos = Math.abs(this.center.x) - circleRadius;
+    var ypos = Math.abs(this.center.y) - circleRadius;
 
     if(xpos > maxDist || ypos > maxDist) {
         this.center.x = Math.round(Math.random() * w - w / 2);
-        this.center.y = Math.round(Math.random() * h / 2 + this.radius);
+        this.center.y = Math.round(Math.random() * h / 10 + this.radius);
 
-        this.setCircleVelocity();
+        this.setVelocity();
     }
 }
 
@@ -151,7 +138,6 @@ function Triangle (center, radius, firstVertexPositionOnCircle) {
 
 
 Triangle.prototype.draw = function(){
-    //c.strokeStyle = 'rgb(255, 255, 255)';
 
     c.beginPath();
     c.moveTo(this.vertexList[0].x, this.vertexList[0].y);
@@ -159,24 +145,60 @@ Triangle.prototype.draw = function(){
         c.lineTo(this.vertexList[i].x, this.vertexList[i].y);
     }
     c.closePath();
-    //c.lineWidth = 30;
-    //c.stroke();
+
 }
 
 
-function initCircle() {
+function initShape(triangle) {
     var centerX = Math.round(Math.random() * w / 2);
-    var centerY = Math.round(Math.random() * h / 2 - 222);
 
 
-    var circle = new Circle(
-        new Point(centerX, centerY),
-        circleRadius,
-        color1,
-        color2
-    )
+    //var centerY = Math.round(Math.random() * h / 2 - circleRadius);
+    if(centerX < 0) {
+        var shape = new Shape(
+            triangleLeftLineParallelFunction(centerX, circleRadius, triangle),
+            circleRadius
+        )
+    } else {
+        var shape = new Shape(
+            triangleRightLineParallelFunction(centerX, circleRadius, triangle),
+            circleRadius
+        )
+    }
 
-    return circle;
+
+    return shape;
+}
+
+function triangleLeftLineParallelFunction(x, radius, triangle) {
+    //triangle[0] is in the origo so no need to calc that, but precizly it would be:
+    //(triangle.vertexList[0].y - triangle.vertexList[1].y) / (triangle.vertexList[0].y - triangle.vertexList[1].x)
+    var slope = (0 - triangle.vertexList[1].y) / (0 - triangle.vertexList[1].x);
+    var y = x * slope;
+    // var slopeOfPerpendicularLine = - 1 / slope;
+    //
+    // var x_on_the_line_moved_by_radius = -1 * Math.sqrt(Math.pow(radius, 2) / (1 + slopeOfPerpendicularLine));
+    // var y_on_the_line_moved_by_radius = x_on_the_line_moved_by_radius * slopeOfPerpendicularLine;
+
+
+    //return new Point(x_on_the_line_moved_by_radius, y_on_the_line_moved_by_radius);
+    return new Point(x - radius, y + radius);
+}
+
+function triangleRightLineParallelFunction(x, radius, triangle) {
+    //triangle[0] is in the origo so no need to calc that, but precizly it would be:
+    //(triangle.vertexList[0].y - triangle.vertexList[1].y) / (triangle.vertexList[0].y - triangle.vertexList[1].x)
+    var slope = (0 - triangle.vertexList[2].y) / (0 - triangle.vertexList[2].x);
+    var y = x * slope;
+    // var slopeOfPerpendicularLine = - 1 / slope;
+    //
+    // var x_on_the_line_moved_by_radius = -1 * Math.sqrt(Math.pow(radius, 2) / (1 + slopeOfPerpendicularLine));
+    // var y_on_the_line_moved_by_radius = x_on_the_line_moved_by_radius * slopeOfPerpendicularLine;
+    //
+    //
+    // return new Point(x_on_the_line_moved_by_radius, y_on_the_line_moved_by_radius);
+
+    return new Point(x + radius, y + radius);
 }
 
 function drawCircle(contex, color) {
@@ -189,24 +211,16 @@ function drawCircle(contex, color) {
 }
 
 var m_canvas = document.createElement('canvas');
-m_canvas.width = 510;
-m_canvas.height = 510;
+m_canvas.width = circleHalfWidth * 2;
+m_canvas.height = circleHalfWidth * 2;
 var m_context = m_canvas.getContext('2d');
-drawCircle(m_context, 'rgb(255, 0, 0)');
+drawCircle(m_context, color1);
 
 var b_canvas = document.createElement('canvas');
-b_canvas.width = 510;
-b_canvas.height = 510;
+b_canvas.width = circleHalfWidth * 2;
+b_canvas.height = circleHalfWidth * 2;
 var b_context = b_canvas.getContext('2d');
-drawCircle(b_context, 'rgb(0, 255, 255)');
-
-
-
-/****************
-CHANGE PARAMETERS
-*****************/
-
-var backgroundColor = '#1d211e';
+drawCircle(b_context, color2);
 
 
 //TRIANGLE
@@ -221,38 +235,23 @@ var triangleCenter = new Point(
 var triangle = new Triangle(triangleCenter, triangleR, triangleStartAngle);
 
 
-//CIRCLES
-var nrOfCircles = 10;
-var circleRadius = Math.max(h / 4, w / 4);
-var strokeW = 33;
-
-var color1 = 'rgba(255, 0, 0, 1)';
-// color1 = 'red';
-// color1 = '#00c0cb';
-var color2 = 'rgba(0, 255, 255, 1)';
-// color2 = 'blue';
-// color2 = '#ffc0cb';
 
 var circleList = [];
 for(var i = 0; i < nrOfCircles; i++) {
-    circleList.push( initCircle() );
+    circleList.push( initShape(triangle) );
 }
 
-//helpers
-var origoPoint = new Circle(origo, 10, 'rgb(255, 255, 0)');
-
-c.lineWidth = strokeW;
-clearCanvas(backgroundColor);
 
 draw();
 
-//c.drawImage(m_canvas, -255, -255);
+
 
 /************
 ACTION
 ************/
 
 function clearCanvas(backgroundColor){
+    c.globalCompositeOperation = 'normal';
     c.fillStyle = backgroundColor;
     c.fillRect(-w/2, -h/2, w, h);
 }
@@ -260,7 +259,12 @@ function clearCanvas(backgroundColor){
 
 function draw() {
     requestAnimationFrame(draw);
+    // window.onclick = function functionName() {
+    //     draw();
+    // };
     clearCanvas(backgroundColor);
+
+    c.globalCompositeOperation = 'difference';
 
     mousePosToCenterVector = getMousePosToCenterVector(mousePos);
 
@@ -277,7 +281,7 @@ function draw() {
     // triangle.draw();
     //
     // c.save();
-    // c.clip();
+    // //c.clip();
     //
     // drawAllCircles();
     //
@@ -307,7 +311,7 @@ function draw() {
     //----------------------
     //TOP LEFT
     //-----------------------
-    //
+
     // c.rotate(-60 * pi / 180);
     // c.scale(-1, 1);
     //
@@ -316,9 +320,7 @@ function draw() {
     // c.save();
     // c.clip();
     //
-
     // drawAllCircles();
-
     // c.restore();
     //
     // c.scale(-1, 1);
@@ -327,6 +329,7 @@ function draw() {
     //----------------------
     //BOTTOM CENTER
     //-----------------------
+
     // c.scale(1, -1);
     //
     //
@@ -336,7 +339,6 @@ function draw() {
     // c.clip();
     //
     // drawAllCircles();
-
     //
     // c.restore();
     //
@@ -361,10 +363,10 @@ function draw() {
     c.rotate(-120 * pi / 180);
 
 
+    //----------------------
+    //BOTTOM LEFT
+    //-----------------------
 
-    // //----------------------
-    // //BOTTOM LEFT
-    // //-----------------------
     // c.rotate(-120 * pi / 180);
     //
     // triangle.draw();
@@ -373,7 +375,7 @@ function draw() {
     // c.clip();
     //
     // drawAllCircles();
-
+    //
     // c.restore();
     //
     //
@@ -383,27 +385,16 @@ function draw() {
 
 
 function drawAllCircles() {
+    console.log('mousePosToCenterVector');
+    console.dir(mousePosToCenterVector);
 
-    c.globalCompositeOperation = 'difference';
 
-    //COLOR1
-    //c.strokeStyle = this.color1;
+    //the drawImage function takes the topleft corner - so wee need to transform the images, to their actual center
     for(var i = 0; i < nrOfCircles; i++) {
-        //circleList[i].draw();
-        c.drawImage(m_canvas, circleList[i].center.x, circleList[i].center.y);
+        c.drawImage(m_canvas, circleList[i].center.x - circleHalfWidth - mousePosToCenterVector.x * 10, circleList[i].center.y - circleHalfWidth - mousePosToCenterVector.y * 10);
+        c.drawImage(b_canvas, circleList[i].center.x - circleHalfWidth + mousePosToCenterVector.x * 10, circleList[i].center.y - circleHalfWidth + mousePosToCenterVector.y * 10);
     }
 
-    //COLOR2
-    // c.strokeStyle = this.color2;
-    // for(var i = 0; i < nrOfCircles; i++) {
-    //     //circleList[i].draw();
-    // }
-    for(var i = 0; i < nrOfCircles; i++) {
-        //circleList[i].draw();
-        c.drawImage(b_canvas, circleList[i].center.x + 5, circleList[i].center.y + 5);
-    }
-
-    c.globalCompositeOperation = 'normal';
 }
 
 
@@ -432,7 +423,7 @@ function setupCanvas() {
      c.translate(canvas.width / 2, canvas.height / 2);
 
      mousePos = new Point(w / 2, h / 2);
-     maxDist = Math.sqrt(Math.pow(w / 2, 2) + Math.pow(w / 2, 2));
+     maxDist = Math.sqrt(Math.pow(w / 2, 2) + Math.pow(h / 2, 2));
  }
 
 
