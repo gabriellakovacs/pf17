@@ -3,46 +3,223 @@ window.onload = function() {
 }
 
 /****************
-CHANGE PARAMETERS
+PARAMETERS
 *****************/
 
 var backgroundColor = '#1d211e';
 
 //CIRCLES
-var nrOfCircles = 12;
-var circleRadius = Math.max(window.innerHeight / 4, window.innerWidth / 4);
-var strokeW = 33;
+var nrOfShapes = 15;
+var circleRadius = Math.max(window.innerHeight / 5, window.innerWidth / 5);
+ // var circleRadius = 100;
+var strokeW = 30;
+// var strokeW = 10;
 var circleHalfWidth = circleRadius + strokeW * 2;
 
 var color1 = 'rgba(255, 0, 0, 1)';
-// color1 = 'red';
-// color1 = '#00c0cb';
 var color2 = 'rgba(0, 255, 255, 1)';
-// color2 = 'blue';
-// color2 = '#ffc0cb';
 
 
-/************
-SETUP CANVAS
-************/
 
-const canvas = document.querySelector('canvas');
-const c = canvas.getContext('2d', {
-  alpha: false
-});
+function Scene(nrOfShapes, canvasList) {
+    this.canvas = document.querySelector('canvas');
+    this.ctx = this.canvas.getContext('2d', {
+      alpha: false
+    });
+    this.w = window.innerWidth;
+    this.h = window.innerHeight;
+    this.origo = new Point(0, 0);
+    this.pi = Math.PI;
+    this.mousePos = new Point(this.w / 2, this.h / 2);
+    this.mousePosToCenterVector;
+    this.maxDist = Math.sqrt(Math.pow(this.w / 2, 2) + Math.pow(this.h / 2, 2));
+    this.shapeList = [];
+    this.shapeListLength = nrOfShapes;
+    this.canvasList = canvasList;
+    this.backgroundColor = backgroundColor;
+    this.clipShapeVertexList = [
+        new Point(this.w / 2, 0),
+        new Point(this.w / 2, -this.h / 2),
+        new Point(-this.w / 10, 0)
+    ];
+}
 
-let w;
-let h;
-const pi = Math.PI;
-const origo = new Point(0, 0);
+Scene.prototype.init = function() {
 
-var mousePos;
-var mousePosToCenterVector;
-var maxDist;
+    this.canvas.width = this.w;
+    this.canvas.height = this.h;
+
+    //set Point(0, 0) to be at the middle of the canvas
+    this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+
+    for(var i = 0; i < this.shapeListLength; i++) {
+        var shape = new Shape();
+        this.shapeList.push(shape);
+    }
+
+}
+
+Scene.prototype.updateOnResize = function() {
+
+    var self = this;
+
+    window.addEventListener('resize', function() {
+
+        self.w = window.innerWidth;
+        self.h = window.innerHeight;
+
+        self.canvas.width = self.w;
+        self.canvas.height = self.h;
+
+        self.ctx.translate(self.canvas.width / 2, self.canvas.height / 2);
 
 
-setupCanvas();
+        for(var i = 0; i < self.shapeListLength; i++) {
+            self.shapeList[i].w = self.w;
+            self.shapeList[i].h = self.h;
+        }
 
+        self.clipShapeVertexList = [
+            new Point(self.w / 2, 0),
+            new Point(self.w / 2, -self.h / 2),
+            new Point(-self.w / 10, 0)
+        ];
+    })
+}
+
+Scene.prototype.draw = function() {
+
+    var self = this;
+
+    requestAnimationFrame(function() {
+        self.draw();
+    });
+
+    this.ctx.globalCompositeOperation = 'normal';
+    this.ctx.beginPath();
+    this.ctx.fillStyle = this.backgroundColor;
+    this.ctx.rect(-this.w/2, -this.h/2, this.w, this.h);
+    this.ctx.fill();
+
+    //this.ctx.globalCompositeOperation = 'normal';
+    // this.ctx.fillStyle = 'backgroundColor';
+    // this.ctx.fillRect(-this.w/2, -this.h/2, this.w, this.h);
+
+
+    this.getMousePosToCenterVector();
+
+    for(var i = 0; i < this.shapeListLength; i++) {
+        this.shapeList[i].handleOutOfSight();
+        this.shapeList[i].moveLinear();
+    }
+
+    //TOP
+    this.drawClipshape();
+
+    this.ctx.save();
+    this.ctx.clip();
+
+    this.drawAllCircles();
+
+
+    this.ctx.restore();
+
+
+    //BOTTOM
+
+    this.ctx.scale(1, -1);
+
+    this.drawClipshape();
+    this.ctx.save();
+    this.ctx.clip();
+
+    this.drawAllCircles();
+
+    this.ctx.restore();
+
+    this.ctx.scale(1, -1);
+
+
+}
+
+Scene.prototype.drawAllCircles = function() {
+    this.ctx.globalCompositeOperation = 'difference';
+
+    //the drawImage function takes the topleft corner - so wee need to transform the images, to their actual center
+    for(var i = 0; i < this.shapeListLength; i++) {
+        this.ctx.drawImage(this.canvasList[0], this.shapeList[i].center.x - this.canvasList[0].width / 2, this.shapeList[i].center.y - this.canvasList[0].height / 2);
+        this.ctx.drawImage(this.canvasList[1], this.shapeList[i].center.x - this.canvasList[1].width / 2 + this.mousePosToCenterVector.x * 20, this.shapeList[i].center.y - this.canvasList[1].height / 2 + this.mousePosToCenterVector.y * 20);
+    }
+
+}
+
+Scene.prototype.getMousePosToCenterVector = function() {
+    this.mousePosToCenterVector = new Point(this.mousePos.x / (this.w / 2), this.mousePos.y / (this.h / 2));
+};
+
+Scene.prototype.updateMotion = function(){
+
+    if(window.DeviceMotionEvent){
+        var self = this;
+      window.addEventListener("devicemotion", function(event) {
+          self.mousePos = new Point(event.accelerationIncludingGravity.x / 7 * self.w, event.accelerationIncludingGravity.x / 7 * self.w);
+      }, false);
+    }
+}
+
+Scene.prototype.updateMousePos = function() {
+    var self = this;
+
+    document.addEventListener('mousemove', function(e) {
+
+        self.mousePos = new Point(e.clientX - self.w / 2, e.clientY - self.h / 2);
+
+        self.clipShapeVertexList = [
+            new Point(self.w / 2, 0),
+            new Point(self.w / 2, -self.h / 2),
+            new Point(-self.w / 10 - self.mousePos.x, 0)
+        ];
+
+   }, false);
+}
+
+Scene.prototype.drawClipshape = function() {
+
+    this.ctx.beginPath();
+    this.ctx.moveTo(this.clipShapeVertexList[0].x, this.clipShapeVertexList[0].y);
+    for (var i = 1; i < 3; i++){
+        this.ctx.lineTo(this.clipShapeVertexList[i].x, this.clipShapeVertexList[i].y);
+    }
+    this.ctx.closePath();
+
+    // this.ctx.strokeStyle = 'rgb(255, 255, 255)';
+    // this.ctx.stroke();
+
+}
+
+
+function Canvas(w, h, color) {
+    this.canvas = document.createElement('canvas');
+    this.ctx =  this.canvas.getContext('2d');
+    this.canvas.width = w;
+    this.canvas.height = h;
+    this.ctx.strokeStyle = color;
+    this.ctx.translate(this.canvas.width / 2, this.canvas.height / 2);
+}
+
+Canvas.prototype.drawCircle = function() {
+    this.ctx.lineWidth = strokeW;
+    this.ctx.beginPath();
+    this.ctx.arc(0, 0, circleRadius, 0, 7, false);
+    this.ctx.stroke();
+}
+
+Canvas.prototype.drawSquare = function() {
+    this.ctx.lineWidth = strokeW;
+    this.ctx.beginPath();
+    this.ctx.rect(0, 0, circleRadius, circleRadius);
+    this.ctx.stroke();
+}
 
 /************
 GEOMETRY
@@ -52,401 +229,53 @@ function Point (x, y){
     this.y = y;
 }
 
-
-function Shape(center, radius) {
-    this.center = center;
-    this.radius = radius;
+function Shape() {
+    this.w = window.innerWidth;
+    this.h = window.innerHeight;
+    this.radius = circleHalfWidth;
+    this.setPosition();
     this.setVelocity();
 }
 
+Shape.prototype.setPosition = function() {
+    this.center = new Point(Math.random() * this.w - this.w / 2.2, this.radius );
+}
 
 Shape.prototype.moveLinear = function() {
     this.center.x += this.step.x;
     this.center.y += this.step.y;
 }
 
-
 Shape.prototype.setVelocity = function() {
-
-     //get the distance from the circle center towards the top center(0, -h/2) of the screen
-     var distanceX = this.center.x * -1;
-     distanceX === 0 ? distanceX = 0.01 : false;
-     var distanceY = -1 * (h / 2) - this.center.y;
-
-     var distanceection = new Point(distanceX, distanceY);
-
-     if(Math.abs(distanceX) > Math.abs(distanceY)) {
-
-         //set the speed for the x axis
-         var velocityX = Math.random() * 1.8 + 0.8;
-
-         //get the speed for the y axis
-         var velocityY = distanceY / (Math.abs(distanceX) / velocityX) ;
-
-         velocityX *= Math.sign(distanceX);
-
-     } else {
-
-         //set the speed for the y axis
-         var velocityY = Math.random() * 1.8 + 0.8;
-
-         //get the speed for the x axis
-         var velocityX = distanceX / (Math.abs(distanceY) / velocityY) ;
-
-         velocityY *= Math.sign(distanceY);
-
-     }
-
-     this.step = new Point(Math.round(velocityX), Math.round(velocityY));
+     this.step = new Point((-Math.random() - 0.2)*3, Math.random() * 3 - 1.5);
+     this.step = new Point((Math.random() + 0.2) * 3, -Math.random() * 3);
  }
 
-
 Shape.prototype.handleOutOfSight = function() {
-    var xpos = Math.abs(this.center.x) - circleRadius;
-    var ypos = Math.abs(this.center.y) - circleRadius;
+    var xpos = Math.abs(this.center.x) - this.radius;
+    var ypos = Math.abs(this.center.y) - this.radius;
 
-    if(xpos > maxDist || ypos > maxDist) {
-        this.center.x = Math.round(Math.random() * w - w / 2);
-        this.center.y = Math.round(Math.random() * h / 10 + this.radius);
-
+    if(xpos > this.w/ 2 || ypos > this.h / 2) {
+        this.setPosition();
         this.setVelocity();
     }
 }
 
 
-/*
-Triangle - defines equal side triangles,
-firstVertexPositionOnCircle - an angle in degrees
-this is where the first vertex will be positioned  on the circle
-*/
-function Triangle (center, radius, firstVertexPositionOnCircle) {
-    this.center = center;
-    this.radius = radius;
-    this.firstVertexPositionOnCircle = firstVertexPositionOnCircle / 180 * pi;
 
-    this.vertexList = [];
 
-    for (var i = 0; i <3; i++){
-        this.vertexList[i] = new Point(
-            Math.cos((i * 2 / 3 * pi) + this.firstVertexPositionOnCircle) * this.radius + this.center.x,
-            Math.sin((i * 2 / 3 * pi) + this.firstVertexPositionOnCircle) * this.radius + this.center.y
-        );
-    }
 
+var canvas_circle_red = new Canvas(circleHalfWidth * 2, circleHalfWidth * 2, 'rgb(255, 0, 0)');
+canvas_circle_red.drawCircle();
 
-}
+var canvas_circle_cyan = new Canvas(circleHalfWidth * 2, circleHalfWidth * 2, 'rgb(0, 255, 255)');
+canvas_circle_cyan.drawCircle();
 
 
-Triangle.prototype.draw = function(){
+var scene = new Scene(nrOfShapes, [canvas_circle_red.canvas, canvas_circle_cyan.canvas]);
 
-    c.beginPath();
-    c.moveTo(this.vertexList[0].x, this.vertexList[0].y);
-    for (var i = 1; i < 3; i++){
-        c.lineTo(this.vertexList[i].x, this.vertexList[i].y);
-    }
-    c.closePath();
-
-}
-
-
-function initShape(triangle) {
-    var centerX = Math.round(Math.random() * w / 2);
-
-
-    //var centerY = Math.round(Math.random() * h / 2 - circleRadius);
-    if(centerX < 0) {
-        var shape = new Shape(
-            triangleLeftLineParallelFunction(centerX, circleRadius, triangle),
-            circleRadius
-        )
-    } else {
-        var shape = new Shape(
-            triangleRightLineParallelFunction(centerX, circleRadius, triangle),
-            circleRadius
-        )
-    }
-
-
-    return shape;
-}
-
-function triangleLeftLineParallelFunction(x, radius, triangle) {
-    //triangle[0] is in the origo so no need to calc that, but precizly it would be:
-    //(triangle.vertexList[0].y - triangle.vertexList[1].y) / (triangle.vertexList[0].y - triangle.vertexList[1].x)
-    var slope = (0 - triangle.vertexList[1].y) / (0 - triangle.vertexList[1].x);
-    var y = x * slope;
-    // var slopeOfPerpendicularLine = - 1 / slope;
-    //
-    // var x_on_the_line_moved_by_radius = -1 * Math.sqrt(Math.pow(radius, 2) / (1 + slopeOfPerpendicularLine));
-    // var y_on_the_line_moved_by_radius = x_on_the_line_moved_by_radius * slopeOfPerpendicularLine;
-
-
-    //return new Point(x_on_the_line_moved_by_radius, y_on_the_line_moved_by_radius);
-    return new Point(x - radius, y + radius);
-}
-
-function triangleRightLineParallelFunction(x, radius, triangle) {
-    //triangle[0] is in the origo so no need to calc that, but precizly it would be:
-    //(triangle.vertexList[0].y - triangle.vertexList[1].y) / (triangle.vertexList[0].y - triangle.vertexList[1].x)
-    var slope = (0 - triangle.vertexList[2].y) / (0 - triangle.vertexList[2].x);
-    var y = x * slope;
-    // var slopeOfPerpendicularLine = - 1 / slope;
-    //
-    // var x_on_the_line_moved_by_radius = -1 * Math.sqrt(Math.pow(radius, 2) / (1 + slopeOfPerpendicularLine));
-    // var y_on_the_line_moved_by_radius = x_on_the_line_moved_by_radius * slopeOfPerpendicularLine;
-    //
-    //
-    // return new Point(x_on_the_line_moved_by_radius, y_on_the_line_moved_by_radius);
-
-    return new Point(x + radius, y + radius);
-}
-
-function drawCircle(contex, color) {
-    contex.lineWidth = 33;
-    contex.strokeStyle = color;
-
-    contex.beginPath();
-    contex.arc(222 + 33, 222 + 33, 222, 0, 7, false);
-    contex.stroke();
-}
-
-var m_canvas = document.createElement('canvas');
-m_canvas.width = circleHalfWidth * 2;
-m_canvas.height = circleHalfWidth * 2;
-var m_context = m_canvas.getContext('2d');
-drawCircle(m_context, color1);
-
-var b_canvas = document.createElement('canvas');
-b_canvas.width = circleHalfWidth * 2;
-b_canvas.height = circleHalfWidth * 2;
-var b_context = b_canvas.getContext('2d');
-drawCircle(b_context, color2);
-
-
-//TRIANGLE
-var triangleR = Math.max(w / 2, h / 2);
-var triangleStartAngle = 90;
-var triangleCenter = new Point(
-    Math.cos((triangleStartAngle + 180) * pi / 180) * triangleR,
-    Math.sin((triangleStartAngle + 180) * pi / 180) * triangleR
-);
-
-
-var triangle = new Triangle(triangleCenter, triangleR, triangleStartAngle);
-
-
-
-var circleList = [];
-for(var i = 0; i < nrOfCircles; i++) {
-    circleList.push( initShape(triangle) );
-}
-
-
-draw();
-
-
-
-/************
-ACTION
-************/
-
-function clearCanvas(backgroundColor){
-    c.globalCompositeOperation = 'normal';
-    c.fillStyle = backgroundColor;
-    c.fillRect(-w/2, -h/2, w, h);
-}
-
-
-function draw() {
-    requestAnimationFrame(draw);
-    // window.onclick = function functionName() {
-    //     draw();
-    // };
-    clearCanvas(backgroundColor);
-
-    c.globalCompositeOperation = 'difference';
-
-    mousePosToCenterVector = getMousePosToCenterVector(mousePos);
-
-    for(var i = 0; i < nrOfCircles; i++) {
-        circleList[i].handleOutOfSight();
-        circleList[i].moveLinear();
-    }
-
-
-    //----------------------
-    //TOP CENTER
-    //-----------------------
-
-    // triangle.draw();
-    //
-    // c.save();
-    // //c.clip();
-    //
-    // drawAllCircles();
-    //
-    //
-    // c.restore();
-
-
-    //----------------------
-    //TOP RIGHT
-    //-----------------------
-
-    c.rotate(60 * pi / 180);
-    c.scale(-1, 1);
-
-    triangle.draw();
-
-    c.save();
-    c.clip();
-
-    drawAllCircles();
-
-    c.restore();
-
-    c.scale(-1, 1);
-    //c.rotate(-60 * pi / 180);
-
-    //----------------------
-    //TOP LEFT
-    //-----------------------
-
-    // c.rotate(-60 * pi / 180);
-    // c.scale(-1, 1);
-    //
-    // triangle.draw();
-    //
-    // c.save();
-    // c.clip();
-    //
-    // drawAllCircles();
-    // c.restore();
-    //
-    // c.scale(-1, 1);
-    // c.rotate(60 * pi / 180);
-
-    //----------------------
-    //BOTTOM CENTER
-    //-----------------------
-
-    // c.scale(1, -1);
-    //
-    //
-    // triangle.draw();
-    //
-    // c.save();
-    // c.clip();
-    //
-    // drawAllCircles();
-    //
-    // c.restore();
-    //
-    // c.scale(1, -1);
-
-    //----------------------
-    //BOTTOM RIGHT
-    //-----------------------
-
-    c.rotate(60 * pi / 180);
-
-    triangle.draw();
-
-    c.save();
-    c.clip();
-
-    drawAllCircles();
-
-    c.restore();
-
-
-    c.rotate(-120 * pi / 180);
-
-
-    //----------------------
-    //BOTTOM LEFT
-    //-----------------------
-
-    // c.rotate(-120 * pi / 180);
-    //
-    // triangle.draw();
-    //
-    // c.save();
-    // c.clip();
-    //
-    // drawAllCircles();
-    //
-    // c.restore();
-    //
-    //
-    // c.rotate(120 * pi / 180);
-
- }
-
-
-function drawAllCircles() {
-    console.log('mousePosToCenterVector');
-    console.dir(mousePosToCenterVector);
-
-
-    //the drawImage function takes the topleft corner - so wee need to transform the images, to their actual center
-    for(var i = 0; i < nrOfCircles; i++) {
-        c.drawImage(m_canvas, circleList[i].center.x - circleHalfWidth - mousePosToCenterVector.x * 10, circleList[i].center.y - circleHalfWidth - mousePosToCenterVector.y * 10);
-        c.drawImage(b_canvas, circleList[i].center.x - circleHalfWidth + mousePosToCenterVector.x * 10, circleList[i].center.y - circleHalfWidth + mousePosToCenterVector.y * 10);
-    }
-
-}
-
-
-function getMousePosToCenterVector(mousePos) {
-    var vector = new Point(mousePos.x / (w / 2), mousePos.y / (h / 2));
-
-    return vector;
-};
-
-
-function getMousePos(canvas, evt) {
-     let rect = canvas.getBoundingClientRect();
-
-     return new Point(evt.clientX, evt.clientY);
- };
-
-
-function setupCanvas() {
-     w = window.innerWidth;
-     h = window.innerHeight;
-
-     canvas.width = w;
-     canvas.height = h;
-
-     //set Point(0, 0) to be at the middle of the canvas
-     c.translate(canvas.width / 2, canvas.height / 2);
-
-     mousePos = new Point(w / 2, h / 2);
-     maxDist = Math.sqrt(Math.pow(w / 2, 2) + Math.pow(h / 2, 2));
- }
-
-
- document.addEventListener('mousemove', function(evt) {
-
-  mousePos = getMousePos(canvas, evt);
-
-  mousePos.x -= w/2;
-  mousePos.y -= h/2;
-}, false);
-
-
-window.onresize = function() {
-    setupCanvas()
-}
-
-
-function motion(event){
-    var container = document.querySelector('.accelerometer');
-    mousePos = new Point(event.accelerationIncludingGravity.x / 5 * w / 2, event.accelerationIncludingGravity.x / 5 * w / 2);
-}
-
-
-if(window.DeviceMotionEvent){
-  window.addEventListener("devicemotion", motion, false);
-}
+scene.init();
+scene.updateOnResize();
+scene.updateMousePos();
+scene.updateMotion();
+scene.draw();
