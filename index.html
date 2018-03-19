@@ -40,7 +40,7 @@
 
       a {
           text-decoration: none;
-          transition: 0.5s cubic-bezier(0,.14,.55,.99) ;
+          transition: 0.4s cubic-bezier(0,.14,.55,.99) ;
           background-color: white;
           color: black;
           padding: 0 15px;
@@ -51,15 +51,12 @@
           position: relative;
       }
 
-
-
       .works li {
           margin-bottom: 1em;
       }
 
       a:hover {
-          //background-color: #888;
-          //color: #fff;
+          color: red;
       }
 
       ul {
@@ -87,8 +84,8 @@
           margin: 0 auto;
           opacity: 1;
           transform: translate(0, 1px);
-          transition: opacity 4s cubic-bezier(.05,.23,.24,.96)
-                      transform: 4s cubic-bezier(.05,.23,.24,.96);
+          transition: opacity 4s cubic-bezier(.05,.23,.24,.96),
+                      transform 4s cubic-bezier(.05,.23,.24,.96);
       }
 
       @media (max-width: 400px) {
@@ -108,30 +105,12 @@
           font-size: 1.5vw;
       }
 
-      .hoverDisplay {
-          z-index: 0;
-          position: fixed;
-          top: 0;
-          left: 0;
-          width: 100vw;
-          height: 100vh;
-          opacity: 0;
-          pointer-events: none;
-          font-size: 5vw;
-      }
-
-      .hoverDisplay.on { opacity: 1; }
-
-      .hoverDisplay span { position: absolute; color: green; mix-blend-mode: difference; font-family: 'Bungee Shade', cursive; }
-      .hoverDisplay span:nth-child(3n + 1) { color: red; }
-      .hoverDisplay span:nth-child(3n + 2) { color: blue; }
 
 
       @media screen and (orientation: portrait) {
           body { font-size: 5vw; padding-top: 5vh; }
           h1   { font-size: 5.5vw; }
           .contact { font-size: 3.5vw; }
-          .hoverDisplay { font-size: 7vw; }
           .works li {
               margin-bottom: 0.5em;
           }
@@ -152,7 +131,9 @@
         <ul class="works">
 
             <li>
-                <a class="js-hover-trigger" href="https://www.volkshaus.ch/" target="_blank">Volkshaus</a>
+                <a class="js-hover-trigger" href="https://www.volkshaus.ch/" target="_blank">
+                    Volkshaus
+                </a>
             </li>
             <li>
                 <a class="js-hover-trigger" href="https://spkantonzh.ch/" target="_blank">Sp Kanton Zürich</a>
@@ -197,11 +178,10 @@
 
     </main>
 
-    <!-- KALEIDOSCOPE -->
-    <script src="js/new.js"></script>
+
 
     <!-- KALEIDOSCOPE -->
-    <!-- <script src="js/interactiveKaleidoscope.js"></script> -->
+    <script src="js/interactiveKaleidoscope.js"></script>
 
   </body>
 </html>
